@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "TFT_LCDdisplay")(type "KiCad")(uri "${KIPRJMOD}/TFT_LCDdisplay.kicad_sym")(options "")(descr ""))
+)
