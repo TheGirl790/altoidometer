@@ -6,7 +6,7 @@
 	(paper "A4")
 	(title_block
 		(title "Altoidometer")
-		(rev "rev1")
+		(rev "1")
 	)
 	(lib_symbols
 		(symbol "Connector:Conn_01x15_Pin"
@@ -6681,7 +6681,6 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "9beef020-f48e-4c48-888b-a28ffd5f88fd")
 		(property "Reference" "SW1"
 			(at 71.12 24.13 0)
@@ -7518,7 +7517,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "e1b98f37-634f-4c58-b379-47ff603b8120")
-		(property "Reference" "J1"
+		(property "Reference" "J2"
 			(at 31.115 101.6 0)
 			(effects
 				(font
@@ -7573,7 +7572,7 @@
 		(instances
 			(project ""
 				(path "/b57712fc-be2e-4ea6-81e8-e743779dbbdf"
-					(reference "J1")
+					(reference "J2")
 					(unit 1)
 				)
 			)
