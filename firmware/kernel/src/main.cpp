@@ -69,6 +69,7 @@ void setup()
         return;
     }
     
+    // Draw boot screen
     drawText(160, 120, ILI9341_WHITE, "AltoidOS", "centre", "centre", 2);
 }
 
