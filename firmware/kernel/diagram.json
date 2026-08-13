@@ -3,16 +3,28 @@
   "author": "TheGirl790",
   "editor": "wokwi",
   "parts": [
-    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": -57.6, "left": 81.64, "attrs": {} },
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": -19.2, "left": 33.64, "attrs": {} },
     {
       "type": "board-ili9341-cap-touch",
       "id": "lcd1",
-      "top": -358.92,
-      "left": -190.34,
+      "top": -310.92,
+      "left": -257.54,
       "rotate": 270,
       "attrs": {}
     }
   ],
-  "connections": [ [ "esp:TX", "$serialMonitor:RX", "", [] ], [ "esp:RX", "$serialMonitor:TX", "", [] ] ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "esp:3V3", "lcd1:VCC", "red", [ "v-124.8", "h-38.25" ] ],
+    [ "esp:GND.2", "lcd1:GND", "black", [ "v0" ] ],
+    [ "lcd1:MOSI", "esp:23", "green", [ "h182.4", "v182.4" ] ],
+    [ "lcd1:MISO", "esp:19", "violet", [ "h192", "v268.8" ] ],
+    [ "lcd1:SCK", "esp:18", "blue", [ "h201.6", "v259.2" ] ],
+    [ "esp:3V3", "lcd1:LED", "red", [ "h0.15", "v-192" ] ],
+    [ "lcd1:RST", "esp:4", "gold", [ "h211.2", "v268.8" ] ],
+    [ "lcd1:CS", "esp:5", "orange", [ "h172.8", "v230.4" ] ],
+    [ "lcd1:D/C", "esp:2", "gray", [ "h220.8", "v9.6" ] ]
+  ],
   "dependencies": {}
 }
