@@ -1,5 +1,7 @@
 #include <Arduino.h>
 #include <SPI.h>
+#include <FS.h>
+#include <SD.h>
 
 #include <string>
 #include <stdexcept>
@@ -7,9 +9,13 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
 
+// display pins
 #define TFT_CS  5
 #define TFT_DC  2
 #define TFT_RST 4
+
+// SD pins
+#define SD_CS 32
 
 Adafruit_ILI9341 display(TFT_CS, TFT_DC, TFT_RST);
 
@@ -44,7 +50,7 @@ void drawText(int16_t x, int16_t y, uint16_t colour, String text, String h_just=
     display.setCursor(startX, startY);
     display.setTextSize(size);
     display.setTextColor(colour);
-    display.print("AltoidOS");
+    display.print(text);
 }
 
 
@@ -56,6 +62,12 @@ void setup()
     display.setRotation(3);
 
     display.fillScreen(ILI9341_BLACK);
+
+    if (!SD.begin(SD_CS)) {
+        drawText(160, 120, ILI9341_RED, "SD Init Failed!", "centre", "centre", 2);
+        drawText(160, 135, ILI9341_RED, "Ensure that the SD card is inserted correctly.", "centre", "centre");
+        return;
+    }
     
     drawText(160, 120, ILI9341_WHITE, "AltoidOS", "centre", "centre", 2);
 }

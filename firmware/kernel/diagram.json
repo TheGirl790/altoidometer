@@ -11,7 +11,8 @@
       "left": -257.54,
       "rotate": 270,
       "attrs": {}
-    }
+    },
+    { "type": "wokwi-microsd-card", "id": "sd1", "top": 29.03, "left": -191.93, "attrs": {} }
   ],
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
@@ -24,7 +25,13 @@
     [ "esp:3V3", "lcd1:LED", "red", [ "h0.15", "v-192" ] ],
     [ "lcd1:RST", "esp:4", "gold", [ "h211.2", "v268.8" ] ],
     [ "lcd1:CS", "esp:5", "orange", [ "h172.8", "v230.4" ] ],
-    [ "lcd1:D/C", "esp:2", "gray", [ "h220.8", "v9.6" ] ]
+    [ "lcd1:D/C", "esp:2", "gray", [ "h220.8", "v9.6" ] ],
+    [ "esp:3V3", "sd1:VCC", "red", [ "v-28.8", "h-86.25", "v95.86" ] ],
+    [ "sd1:GND", "esp:GND.2", "black", [ "h57.6", "v-86.29", "h192" ] ],
+    [ "sd1:SCK", "esp:18", "blue", [ "h76.8", "v-105.61", "h211.2", "v124.8" ] ],
+    [ "sd1:DI", "esp:23", "green", [ "h86.4", "v-134.49", "h182.4", "v67.2" ] ],
+    [ "sd1:CS", "esp:32", "orange", [ "h96", "v-28.74" ] ],
+    [ "sd1:DO", "esp:19", "violet", [ "h96", "v-105.49", "h182.4", "v134.4" ] ]
   ],
   "dependencies": {}
 }
