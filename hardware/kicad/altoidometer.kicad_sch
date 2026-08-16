@@ -7260,7 +7260,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "93385005-0561-4845-8855-b086290aea8e")
-		(property "Reference" "J2"
+		(property "Reference" "J3"
 			(at 19.685 119.38 0)
 			(effects
 				(font
@@ -7315,7 +7315,7 @@
 		(instances
 			(project "altoidometer"
 				(path "/b57712fc-be2e-4ea6-81e8-e743779dbbdf"
-					(reference "J2")
+					(reference "J3")
 					(unit 1)
 				)
 			)
