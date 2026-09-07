@@ -39,9 +39,9 @@ void drawText(int16_t x, int16_t y, uint16_t colour, String text, String h_just=
 
     if (v_just == "top") {
         startY = y;
-    } else if (h_just == "centre") {
+    } else if (v_just == "centre") {
         startY = y - charHeight / 2;
-    } else if (h_just == "bottom") {
+    } else if (v_just == "bottom") {
         startY = y + charHeight / 2;
     } else {
         throw std::invalid_argument("Invalid horizontal justification");
@@ -60,6 +60,8 @@ void setup()
     
     display.begin();
     display.setRotation(3);
+
+    uint8_t madctl = display.readcommand8(ILI9341_RDMADCTL);
 
     display.fillScreen(ILI9341_BLACK);
 
