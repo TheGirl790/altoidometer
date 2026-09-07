@@ -61,8 +61,6 @@ void setup()
     display.begin();
     display.setRotation(3);
 
-    uint8_t madctl = display.readcommand8(ILI9341_RDMADCTL);
-
     display.fillScreen(ILI9341_BLACK);
 
     if (!SD.begin(SD_CS)) {
