@@ -40,9 +40,9 @@ void drawText(int16_t x, int16_t y, uint16_t colour, String text, String h_just=
     if (v_just == "top") {
         startY = y;
     } else if (v_just == "centre") {
-        startY = y + charHeight / 2;
-    } else if (v_just == "bottom") {
         startY = y - charHeight / 2;
+    } else if (v_just == "bottom") {
+        startY = y + charHeight / 2;
     } else {
         throw std::invalid_argument("Invalid horizontal justification");
     }
