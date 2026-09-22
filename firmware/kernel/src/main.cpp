@@ -9,6 +9,8 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
 
+#include <esp_partition.h>
+
 // display pins
 #define TFT_CS  5
 #define TFT_DC  2
@@ -42,7 +44,7 @@ void drawText(int16_t x, int16_t y, uint16_t colour, String text, String h_just=
     } else if (v_just == "centre") {
         startY = y - charHeight / 2;
     } else if (v_just == "bottom") {
-        startY = y + charHeight / 2;
+        startY = y - charHeight;
     } else {
         throw std::invalid_argument("Invalid horizontal justification");
     }
@@ -134,6 +136,44 @@ void drawBMP(const char *filename, int16_t x, int16_t y, uint8_t scale) {
     bmpFile.close();
 }
 
+void print_partitions() {
+    esp_partition_iterator_t it = esp_partition_find(
+        ESP_PARTITION_TYPE_ANY,
+        ESP_PARTITION_SUBTYPE_ANY,
+        nullptr
+    );
+
+    while (it != nullptr) {
+        const esp_partition_t *p = esp_partition_get(it);
+
+        Serial.printf(
+            "label=%-16s type=0x%02X subtype=0x%02X "
+            "offset=0x%06X size=0x%06X\n",
+            p->label,
+            p->type,
+            p->subtype,
+            p->address,
+            p->size
+        );
+
+        it = esp_partition_next(it);
+    }
+
+    esp_partition_iterator_release(it);
+}
+
+struct AapHeader {
+    uint32_t magic;
+    uint16_t version;
+    uint32_t entry_point;
+    uint32_t program_size;
+};
+
+AapHeader read_aap_header(const char *path) {
+    File file = SD.open(path, FILE_READ);
+
+    
+}
 
 void setup()
 {
@@ -151,8 +191,10 @@ void setup()
     }
     
     // Draw boot screen
-    drawText(160, 70, ILI9341_WHITE, "AltoidOS", "centre", "bottom", 2);
+    drawText(160, 85, ILI9341_WHITE, "AltoidOS", "centre", "bottom", 2);
     drawBMP("/bootimg.bmp", 128, 90, 2);
+
+    print_partitions();
 }
 
 void loop()
