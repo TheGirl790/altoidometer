@@ -9,6 +9,10 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
 
+#include <esp_partition.h>
+
+#include "altoidos/api.h"
+
 // display pins
 #define TFT_CS  5
 #define TFT_DC  2
@@ -16,6 +20,10 @@
 
 // SD pins
 #define SD_CS 32
+
+// AAP header checks
+#define AAP_MAGIC 0x534F5441
+#define AAP_SUP_VERSION 1
 
 Adafruit_ILI9341 display(TFT_CS, TFT_DC, TFT_RST);
 
@@ -42,7 +50,7 @@ void drawText(int16_t x, int16_t y, uint16_t colour, String text, String h_just=
     } else if (v_just == "centre") {
         startY = y - charHeight / 2;
     } else if (v_just == "bottom") {
-        startY = y + charHeight / 2;
+        startY = y - charHeight;
     } else {
         throw std::invalid_argument("Invalid horizontal justification");
     }
@@ -134,6 +142,228 @@ void drawBMP(const char *filename, int16_t x, int16_t y, uint8_t scale) {
     bmpFile.close();
 }
 
+struct __attribute__((packed)) AapHeader {
+    uint32_t magic;
+    uint16_t version;
+    uint32_t entry_point;
+    uint32_t program_size;
+};
+
+enum class LoadError {
+    None,
+    FileNotFound,
+    HeaderReadFailed,
+    InvalidMagic,
+    UnsupportedVersion,
+    InvalidSize,
+    FlashWriteFailed,
+    NoAppPartition,
+    ProgramReadFailed
+};
+
+struct LoadResult {
+    bool success;
+    LoadError error;
+};
+
+void dispLoadError(LoadError error) {
+    String errText;
+
+    switch (error) {
+        case LoadError::FileNotFound:
+            errText = "App load failed!\n\nCould not find app binary.\nThe app may have been installed incorrectly.";
+            break;
+
+        case LoadError::HeaderReadFailed:
+            errText = "App load failed!\n\nFailed to read app header.\nThe app binary may be formatted incorrectly.";
+            break;
+
+        case LoadError::InvalidMagic:
+            errText = "App load failed!\nThis is not an AltoidOS app.";
+            break;
+
+        case LoadError::UnsupportedVersion:
+            errText = "App load failed!\n\nUnsupported app version.\nTry updating this app.";
+            break;
+
+        case LoadError::InvalidSize:
+            errText = "App load failed!\n\nProgram size does not match specification.\nThe app binary may be formatted incorrectly.";
+            break;
+
+        case LoadError::FlashWriteFailed:
+            errText = "App load failed!\n\nFailed to write this app to flash.\n";
+            break;
+
+        case LoadError::NoAppPartition:
+            errText = "App load failed!\n\nApp partition not found.\nThis kernel was flashed incorrectly.";
+            break;
+
+        case LoadError::ProgramReadFailed:
+            errText = "App load failed!\n\nCould not read program from file.";
+            break;
+    }
+
+    drawText(
+        0, 0,
+        ILI9341_RED,
+        errText,
+        "left", "top",
+        1
+    );
+}
+
+// all-in-one function to verify and load an app into flash
+LoadResult loadApp(const char* path) {
+    File file = SD.open(path, FILE_READ);
+
+    // Check if file loaded correctly
+    if (!file) {
+        return LoadResult {
+            false,
+            LoadError::FileNotFound
+        };
+    }
+
+    AapHeader header;
+
+    // Try to read the header
+    if (file.read((uint8_t *)&header, sizeof(header)) != sizeof(header)) {
+        file.close();
+        return LoadResult {
+            false,
+            LoadError::HeaderReadFailed
+        };
+    }
+
+    // Check magic and verison
+    if (header.magic != AAP_MAGIC) {
+        return LoadResult {
+            false,
+            LoadError::InvalidMagic
+        };
+    }
+
+    if (header.version != AAP_SUP_VERSION) {
+        return LoadResult {
+            false,
+            LoadError::UnsupportedVersion
+        };
+        
+    }
+
+    // Check that program size matches what the header says it should be
+    if (file.size() - sizeof(AapHeader) != header.program_size) {
+        return LoadResult {
+            false,
+            LoadError::InvalidSize
+        };
+    }
+
+    // Check partition and load the app program
+    const esp_partition_t *app_partition =
+        esp_partition_find_first(
+            ESP_PARTITION_TYPE_APP,
+            ESP_PARTITION_SUBTYPE_APP_OTA_0,
+            nullptr
+        );
+
+    if (app_partition == nullptr) {
+        return LoadResult {
+            false,
+            LoadError::NoAppPartition
+        };
+    }
+
+    // erase partition
+    esp_err_t err = esp_partition_erase_range(
+        app_partition,
+        0,
+        app_partition->size
+    );
+
+    if (err != ESP_OK) {
+        return LoadResult {
+            false,
+            LoadError::FlashWriteFailed
+        };
+    }
+
+    // read file and write to partition
+    uint8_t buffer[4096];
+    size_t remaining = header.program_size;
+    size_t offset = 0;
+
+    while (remaining > 0) {
+        size_t chunk_size = min(remaining, sizeof(buffer));
+
+        if (file.read(buffer, chunk_size) != chunk_size) {
+            return LoadResult {
+                false,
+                LoadError::ProgramReadFailed
+            };
+        }
+
+        if (esp_partition_write(
+                app_partition,
+                offset,
+                buffer,
+                chunk_size
+            ) != ESP_OK) {
+            return LoadResult {
+                false,
+                LoadError::FlashWriteFailed
+            };
+        }
+
+        offset += chunk_size;
+        remaining -= chunk_size;
+    }
+
+    return LoadResult {
+        true,
+        LoadError::None
+    };
+}
+
+// API function definitions go here
+void api_disp_draw_text(
+    int16_t x, int16_t y,
+    uint16_t colour,
+    const char *text,
+    const char *h_just,
+    const char *v_just,
+    uint16_t size
+) {
+    drawText(
+        x, y,
+        colour,
+        String(text),
+        String(h_just),
+        String(v_just),
+        size
+    );
+}
+
+void api_disp_draw_bmp(
+    const char *path,
+    int16_t x, int16_t y,
+    uint8_t scale
+) {
+    drawBMP(
+        path,
+        x, y,
+        scale
+    );
+}
+
+const AltoidOSApi altoidos_api = {
+    .abi_version = 1,
+    .struct_size = sizeof(AltoidOSApi),
+
+    // ...and then get put in the api table here
+    .disp_draw_text = api_disp_draw_text,
+    .disp_draw_bmp = api_disp_draw_bmp
+};
 
 void setup()
 {
@@ -151,8 +381,15 @@ void setup()
     }
     
     // Draw boot screen
-    drawText(160, 70, ILI9341_WHITE, "AltoidOS", "centre", "bottom", 2);
+    drawText(160, 85, ILI9341_WHITE, "AltoidOS", "centre", "bottom", 2);
     drawBMP("/bootimg.bmp", 128, 90, 2);
+
+    // Load launcher app
+    LoadResult result = loadApp("/apps/launcher/app.aap");
+
+    if (!result.success) {
+        dispLoadError(result.error);
+    }
 }
 
 void loop()
