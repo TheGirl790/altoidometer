@@ -19,6 +19,10 @@
 // SD pins
 #define SD_CS 32
 
+// AAP header checks
+#define AAP_MAGIC 0x534F5441
+#define AAP_SUP_VERSION 1
+
 Adafruit_ILI9341 display(TFT_CS, TFT_DC, TFT_RST);
 
 // Single function to draw text on the display using a variety of parameters
@@ -136,43 +140,187 @@ void drawBMP(const char *filename, int16_t x, int16_t y, uint8_t scale) {
     bmpFile.close();
 }
 
-void print_partitions() {
-    esp_partition_iterator_t it = esp_partition_find(
-        ESP_PARTITION_TYPE_ANY,
-        ESP_PARTITION_SUBTYPE_ANY,
-        nullptr
-    );
-
-    while (it != nullptr) {
-        const esp_partition_t *p = esp_partition_get(it);
-
-        Serial.printf(
-            "label=%-16s type=0x%02X subtype=0x%02X "
-            "offset=0x%06X size=0x%06X\n",
-            p->label,
-            p->type,
-            p->subtype,
-            p->address,
-            p->size
-        );
-
-        it = esp_partition_next(it);
-    }
-
-    esp_partition_iterator_release(it);
-}
-
-struct AapHeader {
+struct __attribute__((packed)) AapHeader {
     uint32_t magic;
     uint16_t version;
     uint32_t entry_point;
     uint32_t program_size;
 };
 
-AapHeader read_aap_header(const char *path) {
+enum class LoadError {
+    None,
+    FileNotFound,
+    HeaderReadFailed,
+    InvalidMagic,
+    UnsupportedVersion,
+    InvalidSize,
+    FlashWriteFailed,
+    NoAppPartition,
+    ProgramReadFailed
+};
+
+struct LoadResult {
+    bool success;
+    LoadError error;
+};
+
+void disp_load_error(LoadError error) {
+    String errText;
+
+    switch (error) {
+        case LoadError::FileNotFound:
+            errText = "App load failed!\n\nCould not find app binary.\nThe app may have been installed incorrectly.";
+            break;
+
+        case LoadError::HeaderReadFailed:
+            errText = "App load failed!\n\nFailed to read app header.\nThe app binary may be formatted incorrectly.";
+            break;
+
+        case LoadError::InvalidMagic:
+            errText = "App load failed!\nThis is not an AltoidOS app.";
+            break;
+
+        case LoadError::UnsupportedVersion:
+            errText = "App load failed!\n\nUnsupported app version.\nTry updating this app.";
+            break;
+
+        case LoadError::InvalidSize:
+            errText = "App load failed!\n\nProgram size does not match specification.\nThe app binary may be formatted incorrectly.";
+            break;
+
+        case LoadError::FlashWriteFailed:
+            errText = "App load failed!\n\nFailed to write this app to flash.\n";
+            break;
+
+        case LoadError::NoAppPartition:
+            errText = "App load failed!\n\nApp partition not found.\nThis kernel was flashed incorrectly.";
+            break;
+
+        case LoadError::ProgramReadFailed:
+            errText = "App load failed!\n\nCould not read program from file.";
+            break;
+    }
+
+    drawText(
+        0, 0,
+        ILI9341_RED,
+        errText,
+        "left", "top",
+        1
+    );
+}
+
+// all-in-one function to verify and load an app into flash
+LoadResult load_app(const char* path) {
     File file = SD.open(path, FILE_READ);
 
-    
+    // Check if file loaded correctly
+    if (!file) {
+        return LoadResult {
+            false,
+            LoadError::FileNotFound
+        };
+    }
+
+    AapHeader header;
+
+    // Try to read the header
+    if (file.read((uint8_t *)&header, sizeof(header)) != sizeof(header)) {
+        file.close();
+        return LoadResult {
+            false,
+            LoadError::HeaderReadFailed
+        };
+    }
+
+    // Check magic and verison
+    if (header.magic != AAP_MAGIC) {
+        return LoadResult {
+            false,
+            LoadError::InvalidMagic
+        };
+    }
+
+    if (header.version != AAP_SUP_VERSION) {
+        return LoadResult {
+            false,
+            LoadError::UnsupportedVersion
+        };
+        
+    }
+
+    // Check that program size matches what the header says it should be
+    if (file.size() - sizeof(AapHeader) != header.program_size) {
+        return LoadResult {
+            false,
+            LoadError::InvalidSize
+        };
+    }
+
+    // Check partition and load the app program
+    const esp_partition_t *app_partition =
+        esp_partition_find_first(
+            ESP_PARTITION_TYPE_APP,
+            ESP_PARTITION_SUBTYPE_APP_OTA_0,
+            nullptr
+        );
+
+    if (app_partition == nullptr) {
+        return LoadResult {
+            false,
+            LoadError::NoAppPartition
+        };
+    }
+
+    // erase partition
+    esp_err_t err = esp_partition_erase_range(
+        app_partition,
+        0,
+        app_partition->size
+    );
+
+    if (err != ESP_OK) {
+        return LoadResult {
+            false,
+            LoadError::FlashWriteFailed
+        };
+    }
+
+    // read file and write to partition
+    uint8_t buffer[4096];
+    size_t remaining = header.program_size;
+    size_t offset = 0;
+
+    while (remaining > 0) {
+        size_t chunk_size = min(remaining, sizeof(buffer));
+
+        if (file.read(buffer, chunk_size) != chunk_size) {
+            return LoadResult {
+                false,
+                LoadError::ProgramReadFailed
+            };
+        }
+
+        if (esp_partition_write(
+                app_partition,
+                offset,
+                buffer,
+                chunk_size
+            ) != ESP_OK) {
+            return LoadResult {
+                false,
+                LoadError::FlashWriteFailed
+            };
+        }
+
+        offset += chunk_size;
+        remaining -= chunk_size;
+    }
+
+    return LoadResult {
+        true,
+        LoadError::None
+    };
 }
 
 void setup()
@@ -194,10 +342,15 @@ void setup()
     drawText(160, 85, ILI9341_WHITE, "AltoidOS", "centre", "bottom", 2);
     drawBMP("/bootimg.bmp", 128, 90, 2);
 
-    print_partitions();
+    // Load launcher app
+    LoadResult result = load_app("/apps/launcher/app.aap");
+
+    if (!result.success) {
+        disp_load_error(result.error);
+    }
 }
 
 void loop()
 {
-
+    
 }
