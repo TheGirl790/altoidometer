@@ -11,6 +11,8 @@
 
 #include <esp_partition.h>
 
+#include "altoidos/api.h"
+
 // display pins
 #define TFT_CS  5
 #define TFT_DC  2
@@ -164,7 +166,7 @@ struct LoadResult {
     LoadError error;
 };
 
-void disp_load_error(LoadError error) {
+void dispLoadError(LoadError error) {
     String errText;
 
     switch (error) {
@@ -211,7 +213,7 @@ void disp_load_error(LoadError error) {
 }
 
 // all-in-one function to verify and load an app into flash
-LoadResult load_app(const char* path) {
+LoadResult loadApp(const char* path) {
     File file = SD.open(path, FILE_READ);
 
     // Check if file loaded correctly
@@ -323,6 +325,46 @@ LoadResult load_app(const char* path) {
     };
 }
 
+// API function definitions go here
+void api_disp_draw_text(
+    int16_t x, int16_t y,
+    uint16_t colour,
+    const char *text,
+    const char *h_just,
+    const char *v_just,
+    uint16_t size
+) {
+    drawText(
+        x, y,
+        colour,
+        String(text),
+        String(h_just),
+        String(v_just),
+        size
+    );
+}
+
+void api_disp_draw_bmp(
+    const char *path,
+    int16_t x, int16_t y,
+    uint8_t scale
+) {
+    drawBMP(
+        path,
+        x, y,
+        scale
+    );
+}
+
+const AltoidOSApi altoidos_api = {
+    .abi_version = 1,
+    .struct_size = sizeof(AltoidOSApi),
+
+    // ...and then get put in the api table here
+    .disp_draw_text = api_disp_draw_text,
+    .disp_draw_bmp = api_disp_draw_bmp
+};
+
 void setup()
 {
     Serial.begin(115200);
@@ -343,14 +385,14 @@ void setup()
     drawBMP("/bootimg.bmp", 128, 90, 2);
 
     // Load launcher app
-    LoadResult result = load_app("/apps/launcher/app.aap");
+    LoadResult result = loadApp("/apps/launcher/app.aap");
 
     if (!result.success) {
-        disp_load_error(result.error);
+        dispLoadError(result.error);
     }
 }
 
 void loop()
 {
-    
+
 }
