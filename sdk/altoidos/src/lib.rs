@@ -9,8 +9,8 @@ pub struct AltoidOSApi {
         x: i16, y: i16,
         colour: u16,
         text: *const u8,
-        h_just *const u8,
-        v_just *const u8,
+        h_just: *const u8,
+        v_just: *const u8,
         size: u16,
     ),
 
