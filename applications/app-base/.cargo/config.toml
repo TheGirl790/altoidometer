@@ -1,5 +1,9 @@
 [build]
 target = "xtensa-esp32-none-elf"
 
+[target.xtensa-esp32-none-elf]
+linker = "xtensa-esp32-elf-ld"
+rustflags = ["-C", "link-arg=-Tlinker.ld"]
+
 [unstable]
 build-std = ["core"]

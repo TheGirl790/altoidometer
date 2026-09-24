@@ -1,12 +1,12 @@
 use crate::API;
 
-pub struct Colour(f32, f32, f32);
+pub struct Colour(pub f32, pub f32, pub f32);
 
 pub enum HJust {
     Left,
     Centre,
     Right,
-}
+} 
 
 pub enum VJust {
     Top,
