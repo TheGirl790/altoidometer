@@ -44,7 +44,7 @@ void drawText(int16_t x, int16_t y, uint16_t colour, String text, String h_just=
     } else if (h_just == "bottom") {
         startY = y + charHeight / 2;
     } else {
-        throw std::invalid_argument("Invalid horizontal justification");
+        throw std::invalid_argument("Invalid vertical justification");
     }
 
     display.setCursor(startX, startY);
