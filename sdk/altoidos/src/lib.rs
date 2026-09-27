@@ -17,7 +17,9 @@ pub struct AltoidOSApi {
     pub disp_draw_bmp: unsafe extern "C" fn(
         path: *const u8,
         x: i16, y: i16,
-        size: u8
+        h_just *const u8,
+        v_just *const u8,
+        size: u8,
     )
 }
 
