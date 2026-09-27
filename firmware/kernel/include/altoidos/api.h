@@ -18,6 +18,8 @@ struct AltoidOSApi {
     void (*disp_draw_bmp)(
         const char *path,
         int16_t x, int16_t y,
+        const char *h_just,
+        const char *v_just,
         uint8_t scale
     );
 };

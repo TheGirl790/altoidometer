@@ -62,7 +62,7 @@ void drawText(int16_t x, int16_t y, uint16_t colour, String text, String h_just=
 }
 
 
-void drawBMP(const char *filename, int16_t x, int16_t y, uint8_t scale) {
+void drawBMP(const char *filename, int16_t x, int16_t y, String h_just="left", String v_just="bottom", uint8_t scale=1) {
     File bmpFile = SD.open(filename);
 
     if (!bmpFile) {
@@ -113,6 +113,29 @@ void drawBMP(const char *filename, int16_t x, int16_t y, uint8_t scale) {
         return;
     }
 
+    uint16_t startX;
+    uint16_t startY;
+
+    if (h_just == "left") {
+        startX = x;
+    } else if (h_just == "centre") {
+        startX = x - (width / 2.0f) * scale;
+    } else if (h_just == "right") {
+        startX = x + (width / 2.0f) * scale;
+    } else {
+        throw std::invalid_argument("Invalid horizontal justification");
+    }
+
+    if (v_just == "top") {
+        startY = y;
+    } else if (v_just == "centre") {
+        startY = y - (height / 2.0f) * scale;
+    } else if (v_just == "bottom") {
+        startY = y - height * scale;
+    } else {
+        throw std::invalid_argument("Invalid horizontal justification");
+    }
+
     for (int32_t row = 0; row < height; row++) {
 
         int32_t actualRow = height - 1 - row;
@@ -129,8 +152,8 @@ void drawBMP(const char *filename, int16_t x, int16_t y, uint8_t scale) {
             uint16_t colour = display.color565(r, g, b);
 
             display.fillRect(
-                x + col * scale,
-                y + row * scale,
+                startX + col * scale,
+                startY + row * scale,
                 scale,
                 scale,
                 colour
@@ -347,11 +370,15 @@ void api_disp_draw_text(
 void api_disp_draw_bmp(
     const char *path,
     int16_t x, int16_t y,
+    const char *h_just,
+    const char *v_just,
     uint8_t scale
 ) {
     drawBMP(
         path,
         x, y,
+        h_just,
+        v_just,
         scale
     );
 }
@@ -382,7 +409,7 @@ void setup()
     
     // Draw boot screen
     drawText(160, 85, ILI9341_WHITE, "AltoidOS", "centre", "bottom", 2);
-    drawBMP("/bootimg.bmp", 128, 90, 2);
+    drawBMP("/bootimg.bmp", 160, 90, "centre", "top", 2);
 
     // Load launcher app
     LoadResult result = loadApp("/apps/launcher/app.aap");
